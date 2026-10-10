@@ -2,6 +2,7 @@ import { answerFollowUpWithAI } from "@/lib/ai";
 import { extractImportantInfo } from "@/lib/heuristics";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 25;
 
 // The client sends a short stable key (e.g. "ndir") rather than the full
 // Darija sentence, so we can match it reliably. Before asking the AI we

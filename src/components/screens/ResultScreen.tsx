@@ -197,11 +197,21 @@ export default function ResultScreen({
     setAnswer(null);
     setFreeQuestion("");
     try {
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: result.originalText, question }),
-      });
+      // Same reasoning as the server-side AI timeout: never leave the
+      // person staring at a spinner that will never resolve on its own.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 20000);
+      let res: Response;
+      try {
+        res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: result.originalText, question }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       const data = await res.json();
       setAnswer({ q: question, a: data.answer ?? "…" });
     } catch {

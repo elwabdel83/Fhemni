@@ -4,6 +4,25 @@ import type { DocumentStatus, ExplanationResult } from "./types";
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL = "gpt-4o-mini";
 
+// Serverless hosts (Vercel's Hobby plan in particular) kill a function
+// after a fixed wall-clock budget — around 10s by default. Without our own
+// timeout, a single slow/hanging call to an AI provider eats that whole
+// budget, the platform kills the function with no clean response, and the
+// person's browser is left spinning with nothing to show for it. Every
+// outbound AI call below is wrapped in this so it fails fast and visibly
+// instead, well before the platform would kill it.
+const AI_FETCH_TIMEOUT_MS = 6000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Google renames and retires Gemini model aliases frequently. We try them
 // in order and use the first one that actually responds, instead of
 // hardcoding a single name that can silently start 404ing after an update.
@@ -12,7 +31,7 @@ const GEMINI_MODEL_CANDIDATES = ["gemini-flash-latest", "gemini-2.5-flash", "gem
 async function callGemini(geminiKey: string, body: object): Promise<unknown | null> {
   for (const model of GEMINI_MODEL_CANDIDATES) {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
         {
           method: "POST",
@@ -48,7 +67,7 @@ async function callLLMJson(systemPrompt: string, userContent: string): Promise<u
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     try {
-      const res = await fetch(OPENAI_URL, {
+      const res = await fetchWithTimeout(OPENAI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
         body: JSON.stringify({
@@ -102,7 +121,7 @@ async function callLLMText(systemPrompt: string, userContent: string): Promise<s
   const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     try {
-      const res = await fetch(OPENAI_URL, {
+      const res = await fetchWithTimeout(OPENAI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${openaiKey}` },
         body: JSON.stringify({
@@ -259,7 +278,7 @@ export async function ttsWithAI(text: string): Promise<ArrayBuffer | null> {
   if (!apiKey) return null;
 
   try {
-    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    const res = await fetchWithTimeout("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

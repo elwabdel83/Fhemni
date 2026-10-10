@@ -58,6 +58,22 @@ type Screen =
 const SIMPLE_MODE_KEY = "fhemni_simple_mode_v1";
 const LARGE_TEXT_KEY = "fhemni_large_text_v1";
 
+// Belt-and-braces: the server already times out its own AI calls, but if
+// anything upstream (a slow host, a dropped connection) ever leaves a
+// request hanging, the person should see a clear error within a bounded
+// time instead of a spinner that never resolves.
+const CLIENT_FETCH_TIMEOUT_MS = 20000;
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CLIENT_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default function AppShell({ initialText }: { initialText?: string }) {
   const [mounted, setMounted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -188,7 +204,7 @@ export default function AppShell({ initialText }: { initialText?: string }) {
     }
 
     try {
-      const res = await fetch("/api/explain", {
+      const res = await fetchWithTimeout("/api/explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: combined, source }),
@@ -309,7 +325,7 @@ export default function AppShell({ initialText }: { initialText?: string }) {
     }
 
     try {
-      const res = await fetch("/api/translate", {
+      const res = await fetchWithTimeout("/api/translate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: trimmed, sourceLang }),

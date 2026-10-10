@@ -1,6 +1,7 @@
 import { ttsWithAI } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 25;
 
 export async function POST(req: Request) {
   let body: { text?: string };

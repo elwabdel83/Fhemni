@@ -4,6 +4,7 @@ import { explainWithAI } from "@/lib/ai";
 import { heuristicExplain } from "@/lib/heuristics";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 25;
 
 export async function POST(req: Request) {
   let body: { text?: string; source?: string };

@@ -1,6 +1,7 @@
 import { isAIConfigured, translateToDarijaWithAI } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 25;
 
 const LANGUAGE_LABELS: Record<string, string> = {
   auto: "automatique",
