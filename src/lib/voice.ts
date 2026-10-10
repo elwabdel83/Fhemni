@@ -60,6 +60,20 @@ export function useVoicePlayer() {
       if (!text) return;
       lastTextRef.current = text;
       setState("loading");
+
+      // Mobile browsers (iOS Safari, Chrome Android — most of our users)
+      // only allow speechSynthesis.speak() when it's called synchronously
+      // inside the tap that triggered it. If we `await` the /api/tts fetch
+      // first and only call this as a fallback afterwards, the user
+      // activation from the tap has already expired and the call is
+      // silently blocked — nothing plays. So we start the browser voice
+      // immediately, in the same gesture, and swap to the nicer server
+      // audio afterwards if it shows up in time.
+      const canBrowserSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
+      if (canBrowserSpeak) {
+        speakWithBrowser(text, rate);
+      }
+
       try {
         const res = await fetch("/api/tts", {
           method: "POST",
@@ -69,6 +83,9 @@ export function useVoicePlayer() {
         if (res.status === 200) {
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
+          // Server audio is ready: stop the browser voice (if it already
+          // started) and switch over.
+          window.speechSynthesis?.cancel();
           modeRef.current = "audio";
           if (audioRef.current) {
             audioRef.current.src = url;
@@ -79,13 +96,10 @@ export function useVoicePlayer() {
           }
         }
       } catch {
-        // fall through to browser voice
+        // Keep whatever the browser voice is already doing.
       }
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        speakWithBrowser(text, rate);
-      } else {
-        setState("error");
-      }
+
+      if (!canBrowserSpeak) setState("error");
     },
     [rate, speakWithBrowser],
   );
