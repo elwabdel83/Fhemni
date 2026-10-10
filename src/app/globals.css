@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  touch-action: manipulation;
+}
+
+/* A single, deliberate entrance for each screen instead of scattered
+   per-element animation — keeps navigation feeling calm and premium. */
+@keyframes fhemni-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fhemni-screen {
+  animation: fhemni-screen-in 0.28s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fhemni-screen {
+    animation: none;
+  }
+}
+
+/* Clear, visible focus ring for keyboard/accessibility users, without
+   adding a ring to every mouse click. */
+:focus-visible {
+  outline: 3px solid #0d9488;
+  outline-offset: 2px;
+}
+
+/* Accessibility: scales every rem-based font-size in the app at once,
+   toggled from the home screen for people who read with difficulty. */
+html.fhemni-large-text {
+  font-size: 118%;
+}
